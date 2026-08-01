@@ -1018,20 +1018,29 @@
         btn.disabled = true;
         btn.textContent = 'Sending...';
 
-        // Send to webhook or just show success for now
-        // In production, replace with a real endpoint
-        setTimeout(() => {
-            feedbackForm.style.display = 'none';
-            feedbackSuccess.classList.add('active');
+        // POST to feedback API
+        fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, message })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                feedbackForm.style.display = 'none';
+                feedbackSuccess.classList.add('active');
+                btn.disabled = false;
+                btn.textContent = 'Send Feedback';
+                setTimeout(() => closeModal(), 3000);
+            } else {
+                throw new Error('Server error');
+            }
+        })
+        .catch(() => {
+            showToast('Failed to send. Please try again.');
             btn.disabled = false;
             btn.textContent = 'Send Feedback';
-
-            // Log feedback to console (replace with real endpoint later)
-            console.log('Feedback received:', { email, message, timestamp: new Date().toISOString() });
-
-            // Auto-close after 3 seconds
-            setTimeout(() => closeModal(), 3000);
-        }, 800);
+        });
     };
 
     // ── Toast ──
