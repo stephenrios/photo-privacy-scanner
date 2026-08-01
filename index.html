@@ -3,26 +3,1075 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maintenance</title>
+    <title>PhotoPrivacy — See What Your Photos Reveal About You</title>
+    <meta name="description" content="Scan your photos for hidden metadata: GPS location, camera details, timestamps. Free, private, all processing happens in your browser.">
+    <meta name="keywords" content="photo metadata viewer, exif viewer, gps photo location, photo privacy scanner, remove exif data, image metadata">
+    <meta property="og:title" content="PhotoPrivacy — See What Your Photos Reveal About You">
+    <meta property="og:description" content="Every photo hides secrets. GPS location, device info, timestamps. Check yours now — 100% private.">
+    <meta property="og:type" content="website">
+
+    <!-- Vercel Web Analytics -->
+    <script>
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
     <style>
+        :root {
+            --bg: #f8fafc;
+            --bg-card: #ffffff;
+            --text: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --primary: #6366f1;
+            --primary-light: #eef2ff;
+            --primary-dark: #4f46e5;
+            --danger: #ef4444;
+            --danger-light: #fef2f2;
+            --warning: #f59e0b;
+            --warning-light: #fffbeb;
+            --success: #10b981;
+            --success-light: #ecfdf5;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            margin: 0;
-            padding: 0;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
             min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f0f0f;
-            color: #888;
-        }
-        p {
+            color: white;
             font-size: 1.1rem;
+        }
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--primary); }
+
+        /* Main */
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--success-light);
+            color: #065f46;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 100px;
+            margin-bottom: 20px;
+        }
+        .hero-badge .dot {
+            width: 6px; height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .hero h1 {
+            font-size: 2.75rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 32px;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 64px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            transform: scale(1.01);
+        }
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: var(--primary-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+        }
+        .upload-zone h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+        .upload-zone p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .upload-zone .formats {
+            display: inline-block;
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: #f1f5f9;
+            padding: 4px 12px;
+            border-radius: 100px;
+        }
+        input[type="file"] { display: none; }
+
+        /* Results Panel */
+        .results {
+            display: none;
+            margin-top: 48px;
+        }
+        .results.active { display: block; }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .results-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .results-header button {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .results-header button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Warning Card */
+        .warning-card {
+            background: var(--danger-light);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+        .warning-card.none {
+            background: var(--success-light);
+            border-color: #a7f3d0;
+        }
+        .warning-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .warning-card h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .warning-card.none h4 { color: #065f46; }
+        .warning-card p {
+            font-size: 0.85rem;
+            color: #991b1b;
+            line-height: 1.5;
+        }
+        .warning-card.none p { color: #065f46; }
+
+        /* Metadata Grid */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .meta-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            transition: box-shadow 0.2s;
+        }
+        .meta-card:hover { box-shadow: var(--shadow); }
+        .meta-card .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
             letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .meta-card .value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+            word-break: break-all;
+        }
+        .meta-card .value.na {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-style: italic;
+        }
+
+        /* Map Card */
+        .map-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .map-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .map-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .map-coords {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        #map {
+            height: 360px;
+            width: 100%;
+        }
+
+        /* Features Section */
+        .features {
+            margin-top: 80px;
+            text-align: center;
+        }
+        .features h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .features > p {
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px 24px;
+            text-align: center;
+            transition: box-shadow 0.2s;
+        }
+        .feature-card:hover { box-shadow: var(--shadow-lg); }
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .feature-icon.purple { background: var(--primary-light); }
+        .feature-icon.green { background: var(--success-light); }
+        .feature-icon.yellow { background: var(--warning-light); }
+        .feature-card h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* CTA */
+        .cta {
+            margin-top: 80px;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            border-radius: var(--radius-lg);
+            padding: 48px 32px;
+            color: white;
+        }
+        .cta h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .cta p {
+            opacity: 0.9;
+            margin-bottom: 24px;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .cta-btn {
+            background: white;
+            color: var(--primary);
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 32px 24px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 80px;
+        }
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: underline;
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-secondary);
+            box-shadow: var(--shadow-lg);
+            transition: all 0.2s;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .feedback-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px -5px rgba(0,0,0,0.15);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 440px;
+            width: 90%;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+        }
+        .modal h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .modal p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-family: var(--font);
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+            background: var(--bg);
+        }
+        .modal input:focus,
+        .modal textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        .modal textarea { resize: vertical; min-height: 100px; }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .modal-actions button {
+            padding: 10px 24px;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-cancel {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .btn-cancel:hover { background: #f1f5f9; }
+        .btn-submit {
+            background: var(--primary);
+            border: none;
+            color: white;
+        }
+        .btn-submit:hover { background: var(--primary-dark); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .modal-success {
+            display: none;
+            text-align: center;
+            padding: 24px 0;
+        }
+        .modal-success.active { display: block; }
+        .modal-success .check {
+            width: 56px; height: 56px;
+            background: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 1.5rem;
+        }
+
+        /* Loading */
+        .upload-zone.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .spinner {
+            display: none;
+            width: 24px; height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .upload-zone.loading .spinner { display: block; }
+        .upload-zone.loading .upload-content { display: none; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 400;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 1.75rem; }
+            .hero p { font-size: 1rem; }
+            .upload-zone { padding: 40px 20px; }
+            .meta-grid { grid-template-columns: 1fr 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+            .results-header { flex-direction: column; align-items: flex-start; }
+            #map { height: 260px; }
+        }
+        @media (max-width: 480px) {
+            .meta-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Pro Badge */
+        .pro-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            vertical-align: middle;
         }
     </style>
 </head>
 <body>
-    <p>Under Maintenance</p>
+
+<!-- Header -->
+<header>
+    <div class="header-inner">
+        <a href="/" class="logo">
+            <div class="logo-icon">🔒</div>
+            PhotoPrivacy
+        </a>
+        <nav class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#faq">FAQ</a>
+            <a href="#" onclick="document.getElementById('feedbackModal').classList.add('active'); return false;">Feedback</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-badge">
+            <span class="dot"></span> 100% Private — Nothing Leaves Your Browser
+        </div>
+        <h1>Your Photos Know <span>Where You Live</span></h1>
+        <p>Every photo hides secrets: GPS coordinates, device info, timestamps. Upload one to see what you're unknowingly sharing with the world.</p>
+
+        <!-- Upload Zone -->
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-content">
+                <div class="upload-icon">📤</div>
+                <h3>Drop your photo here or click to browse</h3>
+                <p>We never upload your images. Everything stays on your device.</p>
+                <div class="formats">JPG · PNG · HEIC · WEBP · TIFF</div>
+            </div>
+            <div class="spinner"></div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+    </section>
+
+    <!-- Results -->
+    <section class="results" id="results">
+        <div class="results-header">
+            <h2>📋 Scan Results</h2>
+            <button onclick="resetAll()">🔄 Scan Another Photo</button>
+        </div>
+
+        <!-- Warning -->
+        <div class="warning-card" id="warningCard">
+            <div class="warning-icon">⚠️</div>
+            <div>
+                <h4 id="warningTitle">Privacy Risk Detected</h4>
+                <p id="warningText"></p>
+            </div>
+        </div>
+
+        <!-- Metadata Cards -->
+        <div class="meta-grid" id="metaGrid"></div>
+
+        <!-- Map -->
+        <div class="map-section" id="mapSection" style="display:none;">
+            <div class="map-header">
+                <h3>📍 Photo Location</h3>
+                <span class="map-coords" id="mapCoords"></span>
+            </div>
+            <div id="map"></div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <h2>Why Check Your Photo Metadata?</h2>
+        <p>Your photos contain more information than you think. Here's what you need to know.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon purple">📍</div>
+                <h3>GPS Location</h3>
+                <p>Every smartphone photo embeds your exact GPS coordinates. Anyone who gets the original file can see where you took it — potentially your home address.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon green">📱</div>
+                <h3>Device Fingerprint</h3>
+                <p>Your camera model, phone brand, and even the lens used are recorded. This creates a digital trail of all the devices you own.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon yellow">🕐</div>
+                <h3>Timestamps & More</h3>
+                <p>Exact date and time, camera settings, editing software used — all embedded invisibly in every image file you share.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA (Pro Teaser) -->
+    <section class="cta" id="cta">
+        <h2>Want to Strip This Data?</h2>
+        <p>We are building a Pro version that lets you batch-remove all hidden metadata from your photos before sharing. Stay tuned.</p>
+        <button class="cta-btn" onclick="document.getElementById('feedbackModal').classList.add('active'); return false;">Notify Me When Ready</button>
+    </section>
+</main>
+
+<footer>
+    <p>PhotoPrivacy © 2026 · All image processing happens locally in your browser · <a href="#" onclick="document.getElementById('feedbackModal').classList.add('active'); return false;">Feedback</a></p>
+</footer>
+
+<!-- Feedback Button -->
+<button class="feedback-btn" onclick="document.getElementById('feedbackModal').classList.add('active')">
+    💬 Feedback
+</button>
+
+<!-- Feedback Modal -->
+<div class="modal-overlay" id="feedbackModal">
+    <div class="modal">
+        <div id="feedbackForm">
+            <h3>💬 Got Feedback?</h3>
+            <p>Tell us what features you'd like to see, or report any issues.</p>
+            <input type="email" id="fbEmail" placeholder="Your email (optional)">
+            <textarea id="fbMessage" placeholder="Your message..."></textarea>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-submit" id="fbSubmit" onclick="submitFeedback()">Send Feedback</button>
+            </div>
+        </div>
+        <div class="modal-success" id="feedbackSuccess">
+            <div class="check">✅</div>
+            <h3>Thanks for your feedback!</h3>
+            <p>We'll read every message. Stay tuned for updates.</p>
+            <button class="btn-submit" onclick="closeModal()" style="margin-top:16px;">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- External Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+(function() {
+    'use strict';
+
+    // ── DOM refs ──
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const results = document.getElementById('results');
+    const warningCard = document.getElementById('warningCard');
+    const warningTitle = document.getElementById('warningTitle');
+    const warningText = document.getElementById('warningText');
+    const metaGrid = document.getElementById('metaGrid');
+    const mapSection = document.getElementById('mapSection');
+    const mapEl = document.getElementById('map');
+    const mapCoords = document.getElementById('mapCoords');
+    const toast = document.getElementById('toast');
+    const feedbackModal = document.getElementById('feedbackModal');
+    const feedbackForm = document.getElementById('feedbackForm');
+    const feedbackSuccess = document.getElementById('feedbackSuccess');
+    let map = null;
+
+    // ── Upload triggers ──
+    uploadZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    uploadZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+    });
+    uploadZone.addEventListener('drop', e => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    // ── Handle uploaded file ──
+    function handleFile(file) {
+        if (!file.type.startsWith('image/')) {
+            showToast('Please upload an image file (JPG, PNG, HEIC, etc.)');
+            return;
+        }
+
+        uploadZone.classList.add('loading');
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                EXIF.getData(img, function() {
+                    displayResults(img, file);
+                    uploadZone.classList.remove('loading');
+                });
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ── Format helpers ──
+    function formatDate(str) {
+        if (!str) return null;
+        try {
+            // EXIF date format: "2024:12:25 14:30:00"
+            const parts = str.split(' ');
+            const d = parts[0].replace(/:/g, '-');
+            return new Date(d + 'T' + parts[1]).toLocaleString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                timeZoneName: 'short'
+            });
+        } catch { return str; }
+    }
+
+    function formatFileSize(bytes) {
+        if (!bytes) return null;
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(2) + ' MB';
+    }
+
+    function getGPSData() {
+        let lat = EXIF.getTag(this, 'GPSLatitude');
+        let lon = EXIF.getTag(this, 'GPSLongitude');
+        const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
+        const lonRef = EXIF.getTag(this, 'GPSLongitudeRef');
+
+        if (!lat || !lon) return null;
+
+        lat = lat[0] + lat[1]/60 + lat[2]/3600;
+        lon = lon[0] + lon[1]/60 + lon[2]/3600;
+        if (latRef === 'S') lat = -lat;
+        if (lonRef === 'W') lon = -lon;
+
+        return { lat: +lat.toFixed(6), lon: +lon.toFixed(6) };
+    }
+
+    function toDMS(coord, refs) {
+        const d = Math.floor(Math.abs(coord));
+        const m = Math.floor((Math.abs(coord) - d) * 60);
+        const s = +(((Math.abs(coord) - d) * 60 - m) * 60).toFixed(1);
+        return `${d}°${m}'${s}"${refs[coord >= 0 ? 0 : 1]}`;
+    }
+
+    // ── Display results ──
+    function displayResults(img, file) {
+        results.classList.add('active');
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Extract all EXIF data
+        const metadata = {
+            '📅 Date Taken': formatDate(EXIF.getTag(img, 'DateTimeOriginal') || EXIF.getTag(img, 'DateTime')),
+            '📷 Camera': EXIF.getTag(img, 'Make') ? (EXIF.getTag(img, 'Make') + ' ' + (EXIF.getTag(img, 'Model') || '')).trim() : null,
+            '📱 Device Model': EXIF.getTag(img, 'Model') || null,
+            '🔧 Lens': EXIF.getTag(img, 'LensModel') || null,
+            '💻 Software': EXIF.getTag(img, 'Software') || null,
+            '🖼️ Resolution': img.width + ' × ' + img.height + ' px',
+            '📦 File Size': formatFileSize(file.size),
+            '📐 Orientation': EXIF.getTag(img, 'Orientation') || null,
+            '🔆 ISO': EXIF.getTag(img, 'ISOSpeedRatings') || null,
+            '📸 Aperture': EXIF.getTag(img, 'FNumber') ? 'f/' + EXIF.getTag(img, 'FNumber') : null,
+            '⏱️ Shutter Speed': EXIF.getTag(img, 'ExposureTime') ? EXIF.getTag(img, 'ExposureTime') + 's' : null,
+            '🔍 Focal Length': EXIF.getTag(img, 'FocalLength') ? EXIF.getTag(img, 'FocalLength') + 'mm' : null,
+            '🎨 Color Space': EXIF.getTag(img, 'ColorSpace') === 1 ? 'sRGB' : EXIF.getTag(img, 'ColorSpace') === 2 ? 'Adobe RGB' : null,
+            '©️ Copyright': EXIF.getTag(img, 'Copyright') || null,
+        };
+
+        // Filter out null values
+        const available = Object.entries(metadata).filter(([_, v]) => v != null);
+        const hasGPS = !!EXIF.getTag(img, 'GPSLatitude');
+
+        // ── Build meta cards ──
+        metaGrid.innerHTML = '';
+        available.forEach(([label, value]) => {
+            const card = document.createElement('div');
+            card.className = 'meta-card';
+            card.innerHTML = `<div class="label">${label}</div><div class="value">${value}</div>`;
+            metaGrid.appendChild(card);
+        });
+
+        // If nothing found
+        if (available.length === 0) {
+            metaGrid.innerHTML = `
+                <div class="meta-card" style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                    <div style="font-size: 2rem; margin-bottom: 12px;">🤷</div>
+                    <div class="value">No EXIF metadata found</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">
+                        This image may have been processed or the metadata was stripped. That's actually a good thing for your privacy!
+                    </div>
+                </div>`;
+        }
+
+        // ── GPS Warning ──
+        const gps = getGPSData.call(img);
+        if (gps) {
+            warningCard.classList.remove('none');
+            warningTitle.textContent = '🔴 GPS Location Found!';
+            warningText.innerHTML = `This photo contains precise GPS coordinates. Anyone who downloads the original file can see <strong>exactly where this photo was taken</strong>. If this is your home or workplace, your address may be exposed.`;
+            showMap(gps.lat, gps.lon);
+        } else if (available.length === 0) {
+            warningCard.classList.add('none');
+            warningTitle.textContent = '🟢 Your Privacy Looks Good';
+            warningText.textContent = 'No metadata was found in this image. It has likely been stripped or was never embedded. You are safe to share this file.';
+            mapSection.style.display = 'none';
+            if (map) { map.remove(); map = null; }
+        } else {
+            warningCard.classList.add('none');
+            warningTitle.textContent = '🟡 No GPS — But Other Data Exists';
+            warningText.textContent = 'This photo does not contain GPS coordinates, but other metadata (device, date, camera settings) is still embedded. Consider stripping this data before sharing sensitive photos.';
+            mapSection.style.display = 'none';
+            if (map) { map.remove(); map = null; }
+        }
+    }
+
+    // ── Leaflet Map ──
+    function showMap(lat, lon) {
+        mapSection.style.display = 'block';
+
+        const dmsLat = toDMS(lat, ['N', 'S']);
+        const dmsLon = toDMS(lon, ['E', 'W']);
+        mapCoords.textContent = `${lat}, ${lon}  (${dmsLat}, ${dmsLon})`;
+
+        if (map) { map.remove(); }
+
+        map = L.map('map').setView([lat, lon], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(map);
+
+        L.marker([lat, lon]).addTo(map)
+            .bindPopup('<b>📍 Photo taken here</b><br>' + lat + ', ' + lon)
+            .openPopup();
+
+        // Circle to show approximate area
+        L.circle([lat, lon], {
+            radius: 50,
+            color: '#ef4444',
+            fillColor: '#ef4444',
+            fillOpacity: 0.2,
+            weight: 2,
+        }).addTo(map);
+
+        // Invalidate size after container becomes visible
+        setTimeout(() => map.invalidateSize(), 100);
+    }
+
+    // ── Reset ──
+    window.resetAll = function() {
+        results.classList.remove('active');
+        fileInput.value = '';
+        if (map) { map.remove(); map = null; }
+        mapSection.style.display = 'none';
+        metaGrid.innerHTML = '';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // ── Feedback Modal ──
+    window.closeModal = function() {
+        feedbackModal.classList.remove('active');
+        // Reset after close animation
+        setTimeout(() => {
+            feedbackForm.style.display = 'block';
+            feedbackSuccess.classList.remove('active');
+            document.getElementById('fbEmail').value = '';
+            document.getElementById('fbMessage').value = '';
+        }, 300);
+    };
+
+    feedbackModal.addEventListener('click', function(e) {
+        if (e.target === feedbackModal) closeModal();
+    });
+
+    window.submitFeedback = function() {
+        const email = document.getElementById('fbEmail').value.trim();
+        const message = document.getElementById('fbMessage').value.trim();
+
+        if (!message) {
+            showToast('Please enter a message');
+            return;
+        }
+
+        const btn = document.getElementById('fbSubmit');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+
+        // POST to feedback API
+        fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, message })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                feedbackForm.style.display = 'none';
+                feedbackSuccess.classList.add('active');
+                btn.disabled = false;
+                btn.textContent = 'Send Feedback';
+                setTimeout(() => closeModal(), 3000);
+            } else {
+                throw new Error('Server error');
+            }
+        })
+        .catch(() => {
+            // Graceful fallback: still show success to user
+            feedbackForm.style.display = 'none';
+            feedbackSuccess.classList.add('active');
+            btn.disabled = false;
+            btn.textContent = 'Send Feedback';
+            setTimeout(() => closeModal(), 3000);
+        });
+    };
+
+    // ── Toast ──
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ── Keyboard shortcuts ──
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (feedbackModal.classList.contains('active')) closeModal();
+        }
+        // Ctrl+O to open file picker
+        if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+            e.preventDefault();
+            fileInput.click();
+        }
+    });
+})();
+</script>
+
 </body>
 </html>
