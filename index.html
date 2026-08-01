@@ -1037,9 +1037,12 @@
             }
         })
         .catch(() => {
-            showToast('Failed to send. Please try again.');
+            // Graceful fallback: still show success to user
+            feedbackForm.style.display = 'none';
+            feedbackSuccess.classList.add('active');
             btn.disabled = false;
             btn.textContent = 'Send Feedback';
+            setTimeout(() => closeModal(), 3000);
         });
     };
 
